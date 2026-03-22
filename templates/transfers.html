@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Переводы | Giga Bank</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .card {
+            background: white;
+            border-radius: 28px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #1e3c72;
+            margin-bottom: 10px;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: white;
+            text-decoration: none;
+        }
+        .transfer-item {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+        }
+        .outgoing { color: #e74c3c; }
+        .incoming { color: #2ecc71; }
+        @media (max-width: 600px) {
+            .card { padding: 20px; }
+            .transfer-item { flex-direction: column; gap: 5px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/profile/{{ username }}" class="back-link">← Назад в профиль</a>
+        <div class="card">
+            <h1>💰 История переводов</h1>
+            <div id="transfers-list">
+                <div>Загрузка...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const username = '{{ username }}';
+
+        async function loadTransfers() {
+            const res = await fetch(`/api/users/${username}/transfers`);
+            const transfers = await res.json();
+            const container = document.getElementById('transfers-list');
+
+            if (transfers.length === 0) {
+                container.innerHTML = '<div>Нет переводов</div>';
+                return;
+            }
+
+            container.innerHTML = transfers.map(t => `
+                <div class="transfer-item">
+                    <span>${t.date || ''}</span>
+                    <span class="${t.from === username ? 'outgoing' : 'incoming'}">
+                        ${t.from === username ? '→' : '←'} ${t.from === username ? t.to : t.from}
+                    </span>
+                    <span class="${t.from === username ? 'outgoing' : 'incoming'}">
+                        ${t.amount} ₽
+                    </span>
+                </div>
+            `).join('');
+        }
+
+        loadTransfers();
+    </script>
+</body>
+</html>

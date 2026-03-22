@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мой счёт | Giga Bank</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .header {
+            background: white;
+            border-radius: 28px;
+            padding: 25px 30px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        }
+        .user-info h1 {
+            color: #1e3c72;
+            margin-bottom: 5px;
+        }
+        .balance-card {
+            background: linear-gradient(135deg, #2a5298 0%, #1e3c72 100%);
+            border-radius: 28px;
+            padding: 30px;
+            margin-bottom: 30px;
+            color: white;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .balance-label {
+            font-size: 1rem;
+            opacity: 0.8;
+            margin-bottom: 10px;
+        }
+        .balance-amount {
+            font-size: 3rem;
+            font-weight: 700;
+        }
+        .balance-currency {
+            font-size: 1.5rem;
+            margin-left: 5px;
+        }
+        .actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .action-btn {
+            background: white;
+            border: none;
+            padding: 15px;
+            border-radius: 20px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: #1e3c72;
+        }
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .transactions {
+            background: white;
+            border-radius: 28px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        .transactions h3 {
+            color: #1e3c72;
+            margin-bottom: 20px;
+        }
+        .transaction-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .transaction-positive {
+            color: #2ecc71;
+        }
+        .transaction-negative {
+            color: #e74c3c;
+        }
+        .nav-buttons {
+            display: flex;
+            gap: 12px;
+        }
+        .nav-btn {
+            padding: 10px 20px;
+            background: #1e3c72;
+            color: white;
+            text-decoration: none;
+            border-radius: 40px;
+            font-size: 0.9rem;
+        }
+        .logout-btn {
+            background: #e74c3c;
+        }
+        @media (max-width: 600px) {
+            .balance-amount { font-size: 2rem; }
+            .actions { grid-template-columns: 1fr; }
+            .header { flex-direction: column; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="user-info">
+                <h1>🏦 Giga Bank</h1>
+                <p>Добро пожаловать, {{ username }}</p>
+            </div>
+            <div class="nav-buttons">
+                <a href="/profile/{{ username }}/transfers" class="nav-btn">💰 Переводы</a>
+                <a href="/logout" class="nav-btn logout-btn">🚪 Выйти</a>
+            </div>
+        </div>
+
+        <div class="balance-card">
+            <div class="balance-label">Текущий баланс</div>
+            <div class="balance-amount">
+                <span id="balance">0</span>
+                <span class="balance-currency">₽</span>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button class="action-btn" onclick="showDeposit()">💵 Пополнить</button>
+            <button class="action-btn" onclick="showWithdraw()">💸 Снять</button>
+            <button class="action-btn" onclick="showTransfer()">🔄 Перевести</button>
+        </div>
+
+        <div class="transactions">
+            <h3>📋 История операций</h3>
+            <div id="transactions-list">
+                <div class="transaction-item">Загрузка...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const username = '{{ username }}';
+
+        async function loadBalance() {
+            const res = await fetch(`/api/users/${username}/balance`);
+            const data = await res.json();
+            document.getElementById('balance').textContent = data.balance;
+        }
+
+        function showDeposit() {
+            const amount = prompt('Сумма пополнения (₽):');
+            if (amount && amount > 0) {
+                fetch(`/api/deposit`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ username, amount: parseInt(amount) })
+                }).then(() => loadBalance());
+            }
+        }
+
+        function showWithdraw() {
+            const amount = prompt('Сумма снятия (₽):');
+            if (amount && amount > 0) {
+                fetch(`/api/withdraw`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ username, amount: parseInt(amount) })
+                }).then(() => loadBalance());
+            }
+        }
+
+        function showTransfer() {
+            const to = prompt('Кому перевести (username):');
+            const amount = prompt('Сумма перевода (₽):');
+            if (to && amount > 0) {
+                fetch(`/api/transfer`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ from: username, to, amount: parseInt(amount) })
+                }).then(() => loadBalance());
+            }
+        }
+
+        loadBalance();
+    </script>
+</body>
+</html>
