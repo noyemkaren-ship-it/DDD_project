@@ -1,11 +1,10 @@
 
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 
 
 class UserSchema(BaseModel):
     username: str
     userpassword: str
-    useremail: str
-    userbalance: float
+    useremail: EmailStr
 
 
