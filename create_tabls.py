@@ -1,4 +1,7 @@
-from database.db import Base, engine
+# init_db.py
+from database.db import engine, Base
+from database.models import User
 
-Base.metadata.create_all(engine)
-print("Таблицы созданный!!!")
+print("Создаю таблицы...")
+Base.metadata.create_all(bind=engine)
+print("✅ Таблицы созданы!")

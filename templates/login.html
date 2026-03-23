@@ -154,6 +154,7 @@
 
                 if (response.ok) {
                     const data = await response.json();
+                    document.cookie = `username=${data.username}; path=/; max-age=86400`;
                     window.location.href = `/profile/${data.username}`;
                 } else {
                     const data = await response.json();

@@ -1,0 +1,5 @@
+{
+    "workbench.editorAssociations": {
+        "*.sprite": "d2rmodding.spriteViewer"
+    }
+}

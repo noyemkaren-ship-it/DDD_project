@@ -36,6 +36,9 @@
             color: #1e3c72;
             margin-bottom: 5px;
         }
+        .user-info p {
+            color: #5a6e8a;
+        }
         .balance-card {
             background: linear-gradient(135deg, #2a5298 0%, #1e3c72 100%);
             border-radius: 28px;
@@ -59,9 +62,12 @@
         }
         .actions {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: 1fr;
             gap: 15px;
             margin-bottom: 30px;
+            max-width: 300px;
+            margin-left: auto;
+            margin-right: auto;
         }
         .action-btn {
             background: white;
@@ -77,6 +83,9 @@
         .action-btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .action-btn:active {
+            transform: translateY(0);
         }
         .transactions {
             background: white;
@@ -100,6 +109,10 @@
         .transaction-negative {
             color: #e74c3c;
         }
+        .transaction-date {
+            color: #8a9bb0;
+            font-size: 0.8rem;
+        }
         .nav-buttons {
             display: flex;
             gap: 12px;
@@ -111,14 +124,37 @@
             text-decoration: none;
             border-radius: 40px;
             font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(30, 60, 114, 0.3);
         }
         .logout-btn {
             background: #e74c3c;
+        }
+        .logout-btn:hover {
+            background: #c0392b;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #8a9bb0;
+        }
+        .error-message {
+            background: #ffe3e3;
+            color: #c0392b;
+            padding: 12px 16px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            text-align: center;
+            display: none;
         }
         @media (max-width: 600px) {
             .balance-amount { font-size: 2rem; }
             .actions { grid-template-columns: 1fr; }
             .header { flex-direction: column; text-align: center; }
+            .nav-buttons { width: 100%; justify-content: center; }
         }
     </style>
 </head>
@@ -135,6 +171,8 @@
             </div>
         </div>
 
+        <div id="errorMessage" class="error-message"></div>
+
         <div class="balance-card">
             <div class="balance-label">Текущий баланс</div>
             <div class="balance-amount">
@@ -144,15 +182,13 @@
         </div>
 
         <div class="actions">
-            <button class="action-btn" onclick="showDeposit()">💵 Пополнить</button>
-            <button class="action-btn" onclick="showWithdraw()">💸 Снять</button>
             <button class="action-btn" onclick="showTransfer()">🔄 Перевести</button>
         </div>
 
         <div class="transactions">
             <h3>📋 История операций</h3>
             <div id="transactions-list">
-                <div class="transaction-item">Загрузка...</div>
+                <div class="loading">Загрузка...</div>
             </div>
         </div>
     </div>
@@ -160,47 +196,92 @@
     <script>
         const username = '{{ username }}';
 
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 3000);
+        }
+
         async function loadBalance() {
-            const res = await fetch(`/api/users/${username}/balance`);
-            const data = await res.json();
-            document.getElementById('balance').textContent = data.balance;
-        }
-
-        function showDeposit() {
-            const amount = prompt('Сумма пополнения (₽):');
-            if (amount && amount > 0) {
-                fetch(`/api/deposit`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ username, amount: parseInt(amount) })
-                }).then(() => loadBalance());
+            try {
+                const res = await fetch(`/api/users/${username}/balance`);
+                if (!res.ok) throw new Error('Ошибка загрузки баланса');
+                const data = await res.json();
+                document.getElementById('balance').textContent = data.balance;
+            } catch (err) {
+                console.error(err);
+                showError('Не удалось загрузить баланс');
             }
         }
 
-        function showWithdraw() {
-            const amount = prompt('Сумма снятия (₽):');
-            if (amount && amount > 0) {
-                fetch(`/api/withdraw`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ username, amount: parseInt(amount) })
-                }).then(() => loadBalance());
+        async function loadTransactions() {
+            const container = document.getElementById('transactions-list');
+            try {
+                const res = await fetch(`/api/users/${username}/transactions`);
+                if (!res.ok) throw new Error('Ошибка загрузки истории');
+                const transactions = await res.json();
+
+                if (transactions && transactions.length > 0) {
+                    container.innerHTML = transactions.map(t => `
+                        <div class="transaction-item">
+                            <div>
+                                <div>${t.description || t.type}</div>
+                                <div class="transaction-date">${t.date || new Date().toLocaleString()}</div>
+                            </div>
+                            <div class="${t.amount > 0 ? 'transaction-positive' : 'transaction-negative'}">
+                                ${t.amount > 0 ? '+' : ''}${t.amount} ₽
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<div class="loading">Нет операций</div>';
+                }
+            } catch (err) {
+                console.error(err);
+                container.innerHTML = '<div class="loading">Ошибка загрузки истории</div>';
             }
         }
 
-        function showTransfer() {
+        async function showTransfer() {
             const to = prompt('Кому перевести (username):');
+            if (!to) return;
+
             const amount = prompt('Сумма перевода (₽):');
-            if (to && amount > 0) {
-                fetch(`/api/transfer`, {
+            if (!amount) return;
+
+            const amountNum = parseInt(amount);
+            if (isNaN(amountNum) || amountNum <= 0) {
+                showError('Введите корректную сумму');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/transfer', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ from: username, to, amount: parseInt(amount) })
-                }).then(() => loadBalance());
+                    body: JSON.stringify({ from: username, to, amount: amountNum })
+                });
+
+                const data = await res.json();
+
+                if (res.ok && data.success !== false) {
+                    showError('Перевод выполнен успешно!');
+                    loadBalance();
+                    loadTransactions();
+                } else {
+                    showError(data.text || data.message || 'Ошибка перевода');
+                }
+            } catch (err) {
+                console.error(err);
+                showError('Ошибка соединения');
             }
         }
 
         loadBalance();
+        loadTransactions();
     </script>
 </body>
 </html>
